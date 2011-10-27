@@ -154,6 +154,8 @@ def openTerminalToDir(path):
 	subprocess.call(["osascript", "-e", "tell app \"Terminal\"\ndo script \"cd "+path+";\ngit status -uno\"\nend tell"])
 
 
+curbranchpattern = re.compile(r'\* ([^\s]+)')
+
 def doRepoStatus(repotitle, repopath):
 	""" Check whether the given repo is up-to-date with the remote
 		repositories.
@@ -164,8 +166,13 @@ def doRepoStatus(repotitle, repopath):
 	statusoutput = cmdInRepoDir(repopath, "git status --porcelain")
 	dirtyfiles = re.findall(r'^(M| M)', statusoutput)
 	if len(dirtyfiles) != 0 :
-		curbranch = cmdInRepoDir(repopath, "git branch 2>/dev/null|tr -d \*\ ")
-		printDirty(repopath, repotitle, curbranch, "*"+str(len(dirtyfiles)))
+		branches = cmdInRepoDir(repopath, "git branch 2>/dev/null")
+		result = curbranchpattern.search(branches)
+		if result != None:
+			curbranch = result.group(1)
+			printDirty(repopath, repotitle, curbranch, "*"+str(len(dirtyfiles)))
+		else:
+			print("Warning: No current branch found for "+repotitle)
 
 	## DETECT BRANCHES
 	#printVerbose("Detecting branches:")
