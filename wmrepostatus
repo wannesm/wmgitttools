@@ -21,21 +21,24 @@ if not os.path.isfile(repofilename):
 exec(compile(open(repofilename).read(), repofilename, 'exec'))
 
 
-goto    = -1
-curgoto = 1
-debug   = False
-verbose = False
-nofetch = False
-output  = 'txt'
-cols    = 70
+## Global settings
+goto       = -1
+curgoto    = 1
+debug      = False
+verbose    = False
+nofetch    = False
+repofilter = None
+output     = 'txt'
+cols       = 70
 
+## Output templates
 notsyncedtpl = {
-	'txt': '{reponame} ({branch}) {filler} {diffcount}',
+	'txt': '{repocount}{reponame} ({branch}) {filler} {diffcount}',
 	'html': '<tr><td><a href="file://{repopath}">{reponame}</a></td><td>{branch}</td><td>{diffcount}</td></tr>'
 }
 
 dirtytpl = {
-	'txt': '{reponame} ({branch}) {filler} {dirtycount}',
+	'txt': '{repocount}{reponame} ({branch}) {filler} {dirtycount}',
 	'html': '<tr><td><a href="file://{repopath}">{reponame}</a></td><td>{branch}</td><td>{dirtycount}</td></tr>'
 }
 
@@ -55,37 +58,53 @@ Options:
 	-t, --html             HTML output
 
 	-v, --verbose          Verbose output
+	-d, --debug            Debug output (e.g., git commands)
 	-h, --help             This help text
 '''
 
 
 def doReposStatus():
-	for repo in repos:
-		doRepoStatus(repo[0], repo[1])
+	"""Go over all the repositories."""
+	for (idx,repo) in zip(range(1,len(repos)+1), repos):
+		if repofilter == None or idx in repofilter:
+			doRepoStatus(repo[0], repo[1])
 
 
 def cmdInRepoDir(repopath, cmd):
+	"""Execute the given command in the repository directory."""
+	if debug: print("$ "+cmd)
 	(res,result) = subprocess.getstatusoutput("cd "+repopath+"; "+cmd)
+	if debug: print(result)
 	return result
 
 
 def printRepositories():
-	print(*[repo[1] for repo in repos], sep="\n")
+	"""Print a list of all repositories known to the system."""
+	if verbose:
+		print(*[str(idx)+") "+repo[1] for (idx,repo) in zip(range(1,len(repos)+1),repos)], sep="\n")
+	else:
+		print(*[repo[1] for repo in repos], sep="\n")
 
 
 def printVerbose(string, end="\n"):
+	"""Print the given string if the global option verbose is true."""
 	if verbose:
 		print(string, end=end)
 
 def printDebug(string, end="\n"):
+	"""Print the given string if the global option debug is true."""
 	if debug:
 		print(string, end=end)
 
 def printDirty(repopath, reponame, branch, dirtycount):
+	"""Print the repository to indicate that there are uncommitted changes."""
 	global curgoto
 
 	repostring = dirtytpl[output]
-	repostring = repostring.format(reponame=reponame, repopath=repopath, branch=branch, filler='{filler}', dirtycount='{dirtycount}')
+	repocount = ''
+	if verbose:
+		repocount = str(curgoto)+") "
+	repostring = repostring.format(reponame=reponame, repopath=repopath, branch=branch, filler='{filler}', dirtycount='{dirtycount}', repocount=repocount)
 	fillerlen = cols - len(repostring) - 8 +1
 	repostring = repostring.format(dirtycount=dirtycount, filler='.'*fillerlen)
 	print(repostring)
@@ -96,6 +115,7 @@ def printDirty(repopath, reponame, branch, dirtycount):
 	
 
 def printStats(repopath, reponame, branch, diffcnt):
+	"""Print local-remote statistics for the given repository."""
 	global curgoto
 	if diffcnt == 0 and not verbose:
 		return
@@ -113,8 +133,12 @@ def printStats(repopath, reponame, branch, diffcnt):
 		diffcount = ' '
 	diffcount += str(diffcnt)
 
+	repocount = ''
+	if verbose:
+		repocount = str(curgoto)+") "
+
 	repostring = notsyncedtpl[output]
-	repostring = repostring.format(reponame=reponame, repopath=repopath, diffcount='{diffcount}', branch=branch, filler='{filler}')
+	repostring = repostring.format(reponame=reponame, repopath=repopath, diffcount='{diffcount}', branch=branch, filler='{filler}', repocount=repocount)
 	fillerlen = cols - len(repostring) - 8
 	repostring = repostring.format(diffcount=diffcount, filler='.'*fillerlen)
 	print(repostring)
@@ -227,12 +251,13 @@ def main(argv=None):
 	global debug
 	global nofetch
 	global goto
+	global repofilter
 
 	if argv is None:
 		argv = sys.argv
 	try:
 		try:
-			opts, args = getopt.getopt(argv[1:], "hvo:tldng:", ["nofetch", "help", "verbose", "output=", "html", "list", "debug","goto="])
+			opts, args = getopt.getopt(argv[1:], "hvo:tldng:f:", ["nofetch", "help", "verbose", "output=", "html", "list", "debug","goto=","filter="])
 		except getopt.error as msg:
 			raise Usage(msg)
 
@@ -252,6 +277,8 @@ def main(argv=None):
 				output = 'html'
 			if option in ("-g", "--goto"):
 				goto = int(value)
+			if option in ("-f", "--filter"):
+				exec("global repofilter\nrepofilter = ["+value+"]")
 			if option in ("-l", "--list"):
 				printRepositories()
 				return
