@@ -108,7 +108,7 @@ def printStats(repopath, reponame, branch, diffcnt):
 	if diffcnt > 0:
 		diffcount = '+'
 	elif diffcnt < 0:
-		diffcount = '-'
+		diffcount = ''
 	else:
 		diffcount = ' '
 	diffcount += str(diffcnt)
@@ -206,7 +206,7 @@ def doRepoStatus(repotitle, repopath):
 					if logdiff != "":
 						#print("Remote repo ahead of remote")
 						logdiffs = logdiff.split("\n")
-						printStats(repopath, repotitle, branch, len(logdiffs))
+						printStats(repopath, repotitle, branch, -1*len(logdiffs))
 					else:
 						#print("In sync")
 						printStats(repopath, repotitle, branch, 0)
