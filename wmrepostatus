@@ -186,6 +186,11 @@ def doRepoStatus(repotitle, repopath):
 	"""
 	printDebug("Checking repository "+repotitle)
 
+	## Directory exists?
+	if not os.path.exists(repopath):
+		print("Warning: no repository at path: "+repopath)
+		return
+
 	## CLEAN REPO
 	statusoutput = cmdInRepoDir(repopath, "git status --porcelain")
 	dirtyfiles = re.findall(r'^(M| M)', statusoutput)
